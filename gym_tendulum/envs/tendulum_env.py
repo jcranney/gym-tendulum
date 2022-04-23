@@ -75,7 +75,7 @@ class TendulumEnv(gym.Env):
         # is still within bounds.
         high = np.r_[
                 self._x_threshold * 2,
-                self._theta_threshold_radians * 2,
+                [self._theta_threshold_radians * 2] * self._n_order,
                 [np.finfo(np.float32).max]*(self._n_order+1),
             ].astype(np.float32)
 

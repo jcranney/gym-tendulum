@@ -12,7 +12,43 @@ from gym import logger, spaces
 from gym.utils import seeding
 
 class TendulumEnv(gym.Env):
+    """Environment for the 10th order ndulum.
     
+    Observations:
+    ----------------------------------------
+      index  | observation
+    ----------------------------------------
+        0    | Cart position
+        1    | Angle of 1st rod (wrt vertical)
+        2    | Angle of 2nd rod (wrt vertical)
+       ...   | ...
+        10   | Angle of 10th rod (wrt vertical)
+    ----------------------------------------
+     10+0    | Cart velocity
+     10+1    | Angle velocity of 1st rod
+     10+2    | Angle velocity of 2nd rod
+       ...   | ...
+     10+10   | Angle velocity of 10th rod
+    ----------------------------------------
+    
+    Actions:
+    ----------------------------------------
+     action | description
+    ----------------------------------------
+       0    | Push cart to the left
+       1    | No push
+       2    | Push cart to the right
+    ----------------------------------------
+    
+    Rewards:
+    ----------------------------------------
+     reward | description
+    ----------------------------------------
+       1    | for all non-terminal states  
+       0    | for terminal states
+    ----------------------------------------
+    
+    """
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 50}
     
     def __init__(self):
@@ -93,7 +129,7 @@ class TendulumEnv(gym.Env):
     def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
         options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=((1+self._n_order)*2,))
+        self.state = self.np_random.uniform(low=-0.01, high=0.01, size=((1+self._n_order)*2,))
         self.steps_beyond_done = None
         if not return_info:
             return np.array(self.state, dtype=np.float32)

@@ -90,6 +90,8 @@ class TendulumEnv(gym.Env):
     
     def step(self, action):
         err_msg = f"{action!r} ({type(action)}) invalid"
+        if type(action) is not np.ndarray or action.dtype != np.float32 or action.shape != (1,):
+            action = np.r_[action].astype(np.float32)
         assert self.action_space.contains(action), err_msg
         assert self.state is not None, "Call reset before using step method."
         
@@ -124,7 +126,7 @@ class TendulumEnv(gym.Env):
     def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
         options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.state = np.zeros(((1+self._n_order)*2,))
+        self.state = self.np_random.uniform(low=1e-2,high=1e-2,size=((1+self._n_order)*2,))
         self.state[0] = -1.0
         self.state[self._n_order+1:] = 0.0
         self.steps_beyond_done = None

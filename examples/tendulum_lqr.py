@@ -27,9 +27,9 @@ def get_B(s,u,delta=1e-6):
 n_state = env.observation_space.shape[0]
 n_actu  = env.action_space.shape[0]
 
-Rd_mat = np.array([[1e-3]])
+Rd_mat = np.array([[1e-5]])
 Qd_mat = np.eye(n_state)
-Qd_mat[0,0] = 0.01
+Qd_mat[0,0] = 1.0
 
 def get_K(s):
     A_mat = get_A(s,0)
@@ -44,8 +44,14 @@ def get_K(s):
 done = False
 u = 0.0
 K = get_K(s*0.0)
+score = 0.0
 while not done:
+    env.render()
     #K = get_K(s)
     u = -K @ s
     s,r,done,_ = env.step(u.astype(np.float32))
-    env.render()
+    score += r
+    if score > 500:
+        done = True
+        print(f"Survived. Convergence quality: {r:.5f}")
+print(f"Score: {score:.1f}")

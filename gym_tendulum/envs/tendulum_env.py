@@ -56,7 +56,7 @@ class TendulumEnv(gym.Env):
         self._n_order = 10
 
         # length of each segment
-        self._ell = np.ones(self._n_order+1)*1.3/self._n_order
+        self._ell = np.ones(self._n_order+1)*3.0/self._n_order
         self._ell[0] = np.NaN
         self._mass = np.ones(self._n_order+1)*0.1/self._n_order
         self._mass[0] = 0.1 # mass of the cart
@@ -68,8 +68,8 @@ class TendulumEnv(gym.Env):
         self.tau = 0.02  # seconds between state updates
          
         # Angle at which to fail the episode
-        self._theta_threshold_radians = 15 * math.pi / 180
-        self._x_threshold = 2.4
+        self._theta_threshold_radians = 0.5 * math.pi
+        self._x_threshold = 4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
@@ -103,11 +103,11 @@ class TendulumEnv(gym.Env):
             or np.any(np.abs(self.state[1:(self._n_order+1)]) > self._theta_threshold_radians)
 
         if not done:
-            reward = 1.0
+            reward = 1.0*np.exp(-(self.state[0]**2))
         elif self.steps_beyond_done is None:
             # Pole just fell!
             self.steps_beyond_done = 0
-            reward = 1.0
+            reward = 1.0*np.exp(-(self.state[0]**2))
         else:
             if self.steps_beyond_done == 0:
                 logger.warn(
@@ -148,8 +148,8 @@ class TendulumEnv(gym.Env):
         world_width = self._x_threshold * 2
         scale = width / world_width
         polewidth = 5.0
-        cartwidth = 50.0
-        cartheight = 30.0
+        cartwidth = 80.0
+        cartheight = 60.0
 
         if self.state is None:
             return None
@@ -166,6 +166,7 @@ class TendulumEnv(gym.Env):
         
         self.screen.blit(background,(0,0))
         pygame.draw.line(self.screen,black,(0,y0+cartheight/2),(width,y0+cartheight/2),1)
+        pygame.draw.line(self.screen,black,(x0,0),(x0,height),1)
         pygame.draw.rect(
             self.screen, grey, 
             pygame.Rect(x0+x[0]*scale-cartwidth/2,y0,cartwidth,cartheight)

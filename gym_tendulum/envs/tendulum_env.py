@@ -56,19 +56,19 @@ class TendulumEnv(gym.Env):
         self._n_order = 10
 
         # length of each segment
-        self._ell = np.ones(self._n_order+1)*0.1
+        self._ell = np.ones(self._n_order+1)*1.3/self._n_order
         self._ell[0] = np.NaN
-        self._mass = np.ones(self._n_order+1)*0.1
-        self._mass[0] = 1.0 # mass of the cart
+        self._mass = np.ones(self._n_order+1)*0.1/self._n_order
+        self._mass[0] = 0.1 # mass of the cart
         self._gravity = 9.8
-        self.force_mag = 10.0
+        self.u_max = np.finfo(np.float32).max
         
         self._theta_threshold_radians = 12 * np.pi / 180
 
         self.tau = 0.02  # seconds between state updates
          
         # Angle at which to fail the episode
-        self._theta_threshold_radians = 45 * 2 * math.pi / 360
+        self._theta_threshold_radians = 15 * math.pi / 180
         self._x_threshold = 2.4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
@@ -79,7 +79,7 @@ class TendulumEnv(gym.Env):
                 [np.finfo(np.float32).max]*(self._n_order+1),
             ].astype(np.float32)
 
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Box(low=-self.u_max,high=self.u_max,shape=(1,),dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
         self.screen = None
@@ -93,19 +93,14 @@ class TendulumEnv(gym.Env):
         assert self.action_space.contains(action), err_msg
         assert self.state is not None, "Call reset before using step method."
         
-        if action == 0:
-            force = -self.force_mag
-        elif action == 1:
-            force = 0.0
-        elif action == 2:
-            force = self.force_mag
+        force = action[0]
             
         # integrate forward by self.tau seconds, applying the newest force
         self.state = solve_ivp(lambda t,x: np.linalg.solve(self._mass_matrix(x),self._f_vector(x,force)), 
                       [0,self.tau], self.state, method="RK45").y[:,-1]
         
         done = np.any(np.abs(self.state[0]) > self._x_threshold) \
-            or np.any(np.abs(self.state[1:self._n_order]) > self._theta_threshold_radians)
+            or np.any(np.abs(self.state[1:(self._n_order+1)]) > self._theta_threshold_radians)
 
         if not done:
             reward = 1.0
@@ -129,7 +124,9 @@ class TendulumEnv(gym.Env):
     def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
         options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.state = self.np_random.uniform(low=-0.01, high=0.01, size=((1+self._n_order)*2,))
+        self.state = np.zeros(((1+self._n_order)*2,))
+        self.state[0] = -1.0
+        self.state[self._n_order+1:] = 0.0
         self.steps_beyond_done = None
         if not return_info:
             return np.array(self.state, dtype=np.float32)
@@ -139,12 +136,13 @@ class TendulumEnv(gym.Env):
     def render(self, mode='human'):
         import pygame
         # create a surface on screen that has the size of 240 x 180
-        width = 600
-        height = 400
+        width = 800
+        height = 800
         x0 = width/2
         y0 = height/2
         black = (0,0,0)
         grey = (100,100,100)
+        red = (100,0,0)
         background = pygame.surfarray.make_surface(np.ones([width, height, 3])*255)
 
         world_width = self._x_threshold * 2
@@ -165,23 +163,26 @@ class TendulumEnv(gym.Env):
             self.screen = pygame.display.set_mode((width,height))
         if self.clock is None:
             self.clock = pygame.time.Clock()
-
+        
         self.screen.blit(background,(0,0))
-        pygame.draw.lines(
-            self.screen, black, False, 
-            self._get_vertices(x,scale=scale,offset=(x0,y0),height=height),
-            width=int(polewidth)
-        )
+        pygame.draw.line(self.screen,black,(0,y0+cartheight/2),(width,y0+cartheight/2),1)
         pygame.draw.rect(
             self.screen, grey, 
             pygame.Rect(x0+x[0]*scale-cartwidth/2,y0,cartwidth,cartheight)
         )
-
+        verts = self._get_vertices(x,scale=scale,offset=(x0,y0),height=height)
+        pygame.draw.lines(self.screen, black, False,verts,width=int(polewidth))
+        for vert in verts:
+            pygame.draw.circle(self.screen, red, vert, 5)
+        
         if mode == "human":
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
-
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close()
+                    
         if mode == "rgb_array":
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
@@ -242,7 +243,7 @@ class TendulumEnv(gym.Env):
             vec_2[k] = self._gravity*np.sin(x[k])*self._ell[k]*self._mass[k:].sum() - np.sum([np.sum([
                 self._ell[k]*self._mass[j]*self._ell[i]*x[1+self._n_order+i]**2*np.sin(x[k]-x[i])
                 for i in range(1,j+1)]) for j in range(k,self._n_order+1)])
-        vec_2 -= 0.001*(x[1+self._n_order:])
+        #vec_2 -= 0.001*(x[1+self._n_order:])
         f[1+self._n_order:] = vec_2
         return f
 

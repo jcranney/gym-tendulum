@@ -1,2 +1,3 @@
 gym_tendulum.egg-info*
 *.pyc
+examples/tmp/*

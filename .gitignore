@@ -1,3 +1,6 @@
 gym_tendulum.egg-info*
+*.avi
+examples/softactorcritic/pytorch-soft-actor-critic/checkpoints/*
+examples/softactorcritic/pytorch-soft-actor-critic/runs/*
 *.pyc
 examples/tmp/*

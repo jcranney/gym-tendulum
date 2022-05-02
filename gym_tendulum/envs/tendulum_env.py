@@ -4,6 +4,7 @@ from gym.utils import seeding
 from scipy.integrate import solve_ivp
 import math
 from typing import Optional, Union
+import os
 
 import numpy as np
 
@@ -61,8 +62,8 @@ class TendulumEnv(gym.Env):
         self._mass = np.ones(self._n_order+1)*0.1/self._n_order
         self._mass[0] = 0.1 # mass of the cart
         self._gravity = 9.8
-        self.u_max = np.finfo(np.float32).max
-        
+        self.u_max = 10.0
+        self._max_episode_steps = 500
         self._theta_threshold_radians = 12 * np.pi / 180
 
         self.tau = 0.02  # seconds between state updates
@@ -104,12 +105,15 @@ class TendulumEnv(gym.Env):
         done = np.any(np.abs(self.state[0]) > self._x_threshold) \
             or np.any(np.abs(self.state[1:(self._n_order+1)]) > self._theta_threshold_radians)
 
+        self._episode_step += 1
+        done = done or (self._episode_step > self._max_episode_steps)
+
         if not done:
-            reward = 1.0*np.exp(-(self.state[0]**2))
+            reward = -(self.state[:2]**2).sum()
         elif self.steps_beyond_done is None:
             # Pole just fell!
             self.steps_beyond_done = 0
-            reward = 1.0*np.exp(-(self.state[0]**2))
+            reward = -(self.state[:2]**2).sum()
         else:
             if self.steps_beyond_done == 0:
                 logger.warn(
@@ -126,20 +130,24 @@ class TendulumEnv(gym.Env):
     def reset(self, *, seed: Optional[int] = None, return_info: bool = False,
         options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.state = self.np_random.uniform(low=1e-2,high=1e-2,size=((1+self._n_order)*2,))
+        self.state = self.np_random.uniform(low=-1e-1,high=1e-1,size=((1+self._n_order)*2,))
         self.state[0] = -1.0
         self.state[self._n_order+1:] = 0.0
         self.steps_beyond_done = None
+        self._episode_step = 0
         if not return_info:
             return np.array(self.state, dtype=np.float32)
         else:
             return np.array(self.state, dtype=np.float32), {}
     
-    def render(self, mode='human'):
+    def render(self, mode='human',render_text=""):
         import pygame
+        pygame.font.init()
+        my_font = pygame.font.SysFont('Comic Sans MS', 30)
+        text_surface = my_font.render(render_text, False, (0, 0, 0))
         # create a surface on screen that has the size of 240 x 180
-        width = 800
-        height = 800
+        width = 400
+        height = 400
         x0 = width/2
         y0 = height/2
         black = (0,0,0)
@@ -148,7 +156,7 @@ class TendulumEnv(gym.Env):
         background = pygame.surfarray.make_surface(np.ones([width, height, 3])*255)
 
         world_width = self._x_threshold * 2
-        scale = width / world_width
+        scale = width / world_width / 2 
         polewidth = 5.0
         cartwidth = 80.0
         cartheight = 60.0
@@ -167,6 +175,7 @@ class TendulumEnv(gym.Env):
             self.clock = pygame.time.Clock()
         
         self.screen.blit(background,(0,0))
+        self.screen.blit(text_surface,(10,10))
         pygame.draw.line(self.screen,black,(0,y0+cartheight/2),(width,y0+cartheight/2),1)
         pygame.draw.line(self.screen,black,(x0,0),(x0,height),1)
         pygame.draw.rect(

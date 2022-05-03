@@ -11,7 +11,7 @@ from replay_memory import ReplayMemory
 from pygame_recorder import ScreenRecorder
 
 parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
-parser.add_argument('--env-name', default="HalfCheetah-v2",
+parser.add_argument('--env-name', default="tendulum-v0",
                     help='Mujoco Gym environment (default: HalfCheetah-v2)')
 parser.add_argument('--policy', default="Gaussian",
                     help='Policy Type: Gaussian | Deterministic (default: Gaussian)')
@@ -46,9 +46,15 @@ parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 10000000)')
 parser.add_argument('--cuda', action="store_true",
                     help='run on CUDA (default: False)')
-parser.add_argument('--checkpoint_file', help='path to checkpoint file')
+parser.add_argument('--checkpoint_file', default=None, help='path to checkpoint file')
 args = parser.parse_args()
 
+if args.checkpoint_file is None:
+    # if not defined, grab the latest
+    checkpoint_file = "checkpoints\\sac_checkpoint_tendulum-v0__quadcost_ep_0010"
+    print("WARNING: CHECKPOINT NOT DEFINED, USING\n"+checkpoint_file)
+else:
+    checkpoint_file = args.checkpoint_file
 # Environment
 # env = NormalizedActions(gym.make(args.env_name))
 env = gym.make(args.env_name)
@@ -60,8 +66,8 @@ np.random.seed(args.seed)
 
 # Agent
 agent = SAC(env.observation_space.shape[0], env.action_space, args)
-agent.load_checkpoint(args.checkpoint_file)
-episode = int(args.checkpoint_file[-4:])
+agent.load_checkpoint(checkpoint_file)
+episode = int(checkpoint_file[-4:])
 
 import pygame
 clock = pygame.time.Clock()

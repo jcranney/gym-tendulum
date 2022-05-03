@@ -62,7 +62,7 @@ class TendulumEnv(gym.Env):
         self._mass = np.ones(self._n_order+1)*0.1/self._n_order
         self._mass[0] = 0.1 # mass of the cart
         self._gravity = 9.8
-        self.u_max = 10.0
+        self.u_max = 100.0
         self._max_episode_steps = 500
         self._theta_threshold_radians = 12 * np.pi / 180
 
@@ -109,11 +109,11 @@ class TendulumEnv(gym.Env):
         done = done or (self._episode_step > self._max_episode_steps)
 
         if not done:
-            reward = -(self.state[:2]**2).sum()
+            reward = -(self.state[:2]**2).sum() + 1
         elif self.steps_beyond_done is None:
             # Pole just fell!
             self.steps_beyond_done = 0
-            reward = -(self.state[:2]**2).sum()
+            reward = -(self.state[:2]**2).sum() + 1
         else:
             if self.steps_beyond_done == 0:
                 logger.warn(
